@@ -3,8 +3,8 @@ import 'package:cinemapedia/presentation/providers/actors/actors_repository_prov
 import 'package:flutter_riverpod/legacy.dart';
 
 final actorsByMoviesProvider = StateNotifierProvider<ActorsByMovieNotifer, Map<String, List<Actor>>>((ref) {
-  final getActor = ref.watch(actorsRepositoryProvider).getActorsByMovie;
-  return ActorsByMovieNotifer(getActors: getActor);
+  final actorsProvider = ref.watch(actorsRepositoryProvider);
+  return ActorsByMovieNotifer(getActors: actorsProvider.getActorsByMovie);
 });
 
 typedef GetActorsCallback = Future<List<Actor>> Function(String movieId);
