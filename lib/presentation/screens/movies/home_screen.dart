@@ -1,117 +1,31 @@
-import 'package:cinemapedia/presentation/providers/providers.dart';
-import 'package:cinemapedia/presentation/widgets/widgets.dart';
+import 'package:cinemapedia/presentation/views/views.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cinemapedia/presentation/widgets/widgets.dart';
 
 class HomeScreen extends StatelessWidget {
   static const name = 'home-screen';
+  final int pageIndex;
 
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key, 
+    required this.pageIndex
+  });
+
+  final viewRoutes = const <Widget>[
+    HomeView(),
+    SizedBox(height: 10,),
+    FavouritesView(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _HomeView(),
-      bottomNavigationBar: CustomBottomNavigation(),
+      body: IndexedStack(
+        index: pageIndex,
+        children: viewRoutes,
+      ),
+      bottomNavigationBar: CustomBottomNavigation(currentIndex: pageIndex),
     );
   }
 }
 
-class _HomeView extends ConsumerStatefulWidget {
-  const _HomeView();
-
-  @override
-  _HomeViewState createState() => _HomeViewState();
-}
-
-class _HomeViewState extends ConsumerState<_HomeView> {
-  @override
-  void initState() {
-    super.initState();
-    ref.read(nowPlayingMoviesProvider.notifier).loadNextPage();
-    ref.read(popularMoviesProvider.notifier).loadNextPage();
-    ref.read(upComingMoviesProvider.notifier).loadNextPage();
-    ref.read(topRatedMoviesProvider.notifier).loadNextPage();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-
-    final initialLoading = ref.watch(initialLoadingProvider);
-    if(initialLoading) return FullScreenLoader();
-
-    final slideShowMovies = ref.watch(moviesSlideshow);
-    final nowPlayingMovies = ref.watch(nowPlayingMoviesProvider);
-    final popularMovies = ref.watch(popularMoviesProvider);
-    final upComingMovies = ref.watch(upComingMoviesProvider);
-    final topRatedMovies = ref.watch(topRatedMoviesProvider);
-
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          floating: true,
-          flexibleSpace: FlexibleSpaceBar(
-            centerTitle: true,
-            title: CustomAppbar(),
-          ),
-        ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate((context, index) {
-            return Column(
-              children: [
-                // const CustomAppbar(),
-
-                MoviesSlideshow(movies: slideShowMovies),
-
-                MovieHorizontalListview(
-                  movies: nowPlayingMovies,
-                  title: 'In theaters',
-                  subTitle: 'Friday 13',
-                  loadNextPage: () => ref
-                      .read(nowPlayingMoviesProvider.notifier)
-                      .loadNextPage(),
-                ),
-                MovieHorizontalListview(
-                  movies: upComingMovies,
-                  title: 'Soon',
-                  subTitle: 'This month',
-                  loadNextPage: () => ref
-                      .read(upComingMoviesProvider.notifier)
-                      .loadNextPage(),
-                ),
-                MovieHorizontalListview(
-                  movies: popularMovies,
-                  title: 'Most watched',
-                  // subTitle: 'This month',
-                  loadNextPage: () => ref
-                      .read(popularMoviesProvider.notifier)
-                      .loadNextPage(),
-                ),
-                MovieHorizontalListview(
-                  movies: topRatedMovies,
-                  title: 'Top rated',
-                  // subTitle: 'This month',
-                  loadNextPage: () => ref
-                      .read(topRatedMoviesProvider.notifier)
-                      .loadNextPage(),
-                ),
-
-                SizedBox(height: 10),
-
-                // Expanded(
-                //   child: ListView.builder(
-                //     itemCount: nowPlayingMovies.length,
-                //     itemBuilder: (context, index) {
-                //       final movie = nowPlayingMovies[index];
-                //       return ListTile(title: Text(movie.title));
-                //     },
-                //   ),
-                // ),
-              ],
-            );
-          }, childCount: 1),
-        ),
-      ],
-    );
-  }
-}
