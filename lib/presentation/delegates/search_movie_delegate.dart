@@ -8,32 +8,53 @@ import 'package:flutter/material.dart';
 typedef SearchMoviesCallback = Future<List<Movie>> Function(String query);
 
 class SearchMovieDelegate extends SearchDelegate<Movie?> {
-
   final SearchMoviesCallback searchMovies;
+
+  List<Movie> initialMovies;
+
   StreamController<List<Movie>> debouncedMovies = StreamController.broadcast();
+  StreamController<bool> isLoadingStream = StreamController.broadcast();
+
   Timer? _debouncedTimer;
 
-  SearchMovieDelegate({
-    required this.searchMovies,
-    });
+  SearchMovieDelegate({required this.searchMovies, required this.initialMovies})
+    : super(searchFieldLabel: 'Search movies');
 
-  void clearStreams(){ //hay que cerrar porque sino ocupa lugar en memoria cada vez que se llama
+  void clearStreams() {
+    //hay que cerrar porque sino ocupa lugar en memoria cada vez que se llama
     debouncedMovies.close();
   }
 
-  void _onQueryChanged(String query){
-    if(_debouncedTimer?.isActive ?? false) _debouncedTimer!.cancel();
+  void _onQueryChanged(String query) {
+    isLoadingStream.add(true); //Empieza a girar el icono de cargando
+    if (_debouncedTimer?.isActive ?? false) _debouncedTimer!.cancel();
 
-    _debouncedTimer = Timer(const Duration(milliseconds: 500), ()async{
-      //Search movies
-      if(query.isEmpty) {
-        debouncedMovies.add([]);
-        return;
-      }
+    _debouncedTimer = Timer(const Duration(milliseconds: 500), () async {
       final movies = await searchMovies(query);
+      initialMovies = movies;
       debouncedMovies.add(movies);
-
+      isLoadingStream.add(false);
     });
+  }
+
+  Widget _buildResultsAndSuggestions() {
+    return StreamBuilder(
+      initialData: initialMovies,
+      stream: debouncedMovies.stream,
+      builder: (context, snapshot) {
+        final movies = snapshot.data ?? [];
+        return ListView.builder(
+          itemCount: movies.length,
+          itemBuilder: (context, index) => _MovieItem(
+            movie: movies[index],
+            onMovieSelected: (context, movie) {
+              clearStreams();
+              close(context, movie);
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -42,13 +63,29 @@ class SearchMovieDelegate extends SearchDelegate<Movie?> {
   @override
   List<Widget>? buildActions(BuildContext context) {
     return [
-      // if(query.isNotEmpty)
-      FadeIn(
-        animate: query.isNotEmpty,
-        child: IconButton(
-          onPressed: () => query = '',
-          icon: const Icon(Icons.clear),
-        ),
+      StreamBuilder(
+        initialData: false,
+        stream: isLoadingStream.stream,
+        builder: (context, snapshot) {
+          if (snapshot.data ?? false) {
+            return SpinPerfect(
+              duration: const Duration(seconds: 20),
+              spins: 10,
+              infinite: true,
+              child: IconButton(
+                onPressed: () => query = '',
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            );
+          }
+          return FadeIn(
+            animate: query.isNotEmpty,
+            child: IconButton(
+              onPressed: () => query = '',
+              icon: const Icon(Icons.clear),
+            ),
+          );
+        },
       ),
     ];
   }
@@ -59,39 +96,21 @@ class SearchMovieDelegate extends SearchDelegate<Movie?> {
       onPressed: () {
         clearStreams();
         close(context, null);
-        },
+      },
       icon: Icon(Icons.arrow_back_ios_new_outlined),
     );
   }
 
   @override
   Widget buildResults(BuildContext context) {
-    return const Text('build lresults');
+    // _onQueryChanged(query); hace la peticion 2 veces cuando toco enter
+    return _buildResultsAndSuggestions();
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    
     _onQueryChanged(query);
-
-    return StreamBuilder(
-      stream: debouncedMovies.stream,
-      initialData: const [],
-      builder: (context, snapshot) {
-
-        final movies = snapshot.data ?? [];
-        return ListView.builder(
-          itemCount: movies.length,
-          itemBuilder: (context, index) => _MovieItem(
-            movie: movies[index],
-            onMovieSelected: (context, movie){
-              clearStreams();
-              close(context, movie);
-            },
-            ),
-        );
-      },
-    );
+    return _buildResultsAndSuggestions();
   }
 }
 
@@ -110,7 +129,7 @@ class _MovieItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: GestureDetector(
         onTap: () {
-          onMovieSelected(context,movie);
+          onMovieSelected(context, movie);
         },
         child: Row(
           children: [
@@ -127,7 +146,7 @@ class _MovieItem extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-        
+
             //Description
             SizedBox(
               width: size.width * 0.7,
@@ -140,14 +159,19 @@ class _MovieItem extends StatelessWidget {
                       : Text(movie.overview),
                   Row(
                     children: [
-                      Icon( Icons.star_half_rounded, color: Colors.yellow.shade800),
+                      Icon(
+                        Icons.star_half_rounded,
+                        color: Colors.yellow.shade800,
+                      ),
                       const SizedBox(width: 5),
                       Text(
-                        HumanFormat.number(movie.voteAverage,1),
-                        style: textStyle.bodyMedium!.copyWith(color: Colors.yellow.shade900),
-                      )
+                        HumanFormat.number(movie.voteAverage, 1),
+                        style: textStyle.bodyMedium!.copyWith(
+                          color: Colors.yellow.shade900,
+                        ),
+                      ),
                     ],
-                    ),
+                  ),
                 ],
               ),
             ),
