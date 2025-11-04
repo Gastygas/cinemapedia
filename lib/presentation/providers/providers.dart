@@ -8,3 +8,6 @@ export 'movies/movies_slideshow_provider.dart';
 export 'movies/movie_info_provider.dart';
 
 export 'search/search_movies_provider.dart';
+
+export 'storage/favourite_movies_provider.dart';
+export 'storage/local_storage.provider.dart';
